@@ -56,7 +56,7 @@ namespace Client
             }
         }
 
-        static void BroadcastMessage(string message)
+        public static void BroadcastMessage(string message)
         {
             IPEndPoint endPoint;
 
