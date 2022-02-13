@@ -88,7 +88,22 @@ namespace Server
 
                     Console.WriteLine("Received broadcast from " + groupEP.ToString() 
                         + " : " + Encoding.ASCII.GetString(bytes, 0, bytes.Length));
-                      
+
+                    Socket socketEnviador = new Socket(AddressFamily.InterNetwork,
+                                         SocketType.Dgram,
+                                         ProtocolType.Udp);
+
+                    
+
+                    for (int i = 0; i < 100; i++)
+                    {
+                        IPEndPoint endPoint = new IPEndPoint(multiCastIPAddress, multiCastPort+1000+i);
+
+                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes(Encoding.ASCII.GetString(bytes, 0, bytes.Length)), endPoint);                       
+                    }
+                    Console.WriteLine("Mensagem devolvida para todos no multicast.....");
+
+
                 }
                 Console.WriteLine("close multiCastSocket.......");
                 multiCastSocket.Close();
