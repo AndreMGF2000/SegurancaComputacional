@@ -3,6 +3,9 @@ using System.Net.Sockets;
 using System.Net;
 using System.Text;
 using System.Threading;
+using System.Security.Cryptography;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.IO;
 
 namespace Client
 {
@@ -16,9 +19,12 @@ namespace Client
         private static String response = new String("");
         private static string[] MultiCastIpPort;
 
+        private static RSAParameters rsaKeyInfo;
+
         static void Main()
         {
             Console.Title = "Client";
+            CreateAssimetricKey();
             ConnectToServer();
             RequestResponseServer();
             //Exit();
@@ -33,7 +39,13 @@ namespace Client
             }
         }
 
-
+        private static void CreateAssimetricKey()
+        {
+            //Generate a public/private key pair.  
+            RSA rsa = RSA.Create();
+            //Save the public key information to an RSAParameters structure.  
+            rsaKeyInfo = rsa.ExportParameters(false);
+        }
 
         private static void ConnectToServer()
         {
@@ -124,7 +136,9 @@ namespace Client
             Console.Write("Type Your Username: ");
             login = Console.ReadLine();
             Console.Title = login;
+            SendParametersPublicKey(rsaKeyInfo);
             SendString(login);
+            
 
             if (login.ToLower() == "exit")
             {
@@ -136,6 +150,37 @@ namespace Client
         {
             byte[] buffer = Encoding.ASCII.GetBytes(text);
             ClientSocket.Send(buffer, 0, buffer.Length, SocketFlags.None);
+        }
+        private static void SendParametersPublicKey(RSAParameters rsaKeyInfo)
+        {            
+            byte[] bufferExponent = (rsaKeyInfo.Exponent);
+            ClientSocket.Send(bufferExponent, 0, bufferExponent.Length, SocketFlags.None);
+            byte[] bufferModulus = (rsaKeyInfo.Modulus);
+            ClientSocket.Send(bufferModulus, 0, bufferModulus.Length, SocketFlags.None);          
+        }
+
+        private static byte[] ObjectToByteArray(Object obj)
+        {
+            if (obj == null)
+                return null;
+
+            BinaryFormatter bf = new BinaryFormatter();
+            MemoryStream ms = new MemoryStream();
+            bf.Serialize(ms, obj);
+
+            return ms.ToArray();
+        }
+
+        // Convert a byte array to an Object
+        private static Object ByteArrayToObject(byte[] arrBytes)
+        {
+            MemoryStream memStream = new MemoryStream();
+            BinaryFormatter binForm = new BinaryFormatter();
+            memStream.Write(arrBytes, 0, arrBytes.Length);
+            memStream.Seek(0, SeekOrigin.Begin);
+            Object obj = (Object)binForm.Deserialize(memStream);
+
+            return obj;
         }
 
         private static void ReceiveResponse()

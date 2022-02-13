@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 
@@ -14,11 +15,12 @@ namespace Server
         private const int BUFFER_SIZE = 2048;
         private const int PORT = 100;
         private static readonly byte[] buffer = new byte[BUFFER_SIZE];
-        
-
+        private static RSAParameters rsaKeyInfo;
+        private static int contadorChavePublica = 0;
         static void Main()
         {
             Console.Title = "Server";
+            CreateAssimetricKey();
             MultiCast.FirstAuction();
             SetupServer();
             while (true)
@@ -76,6 +78,14 @@ namespace Server
             serverSocket.BeginAccept(AcceptCallback, null);
         }
 
+
+        private static void CreateAssimetricKey()
+        {
+            //Generate a public/private key pair.  
+            RSA rsa = RSA.Create();
+            //Save the public key information to an RSAParameters structure.  
+            rsaKeyInfo = rsa.ExportParameters(false);
+        }
         private static void ReceiveCallback(IAsyncResult AR)
         {
             Socket current = (Socket)AR.AsyncState;
@@ -96,8 +106,29 @@ namespace Server
 
             byte[] recBuf = new byte[received];
             Array.Copy(buffer, recBuf, received);
-            string text = Encoding.ASCII.GetString(recBuf);
-            Console.WriteLine("Cliente |" + text + "| Conectou-se");
+            string text = "";
+            try
+            {
+                text = Encoding.ASCII.GetString(recBuf);
+                Console.WriteLine("Cliente |" + text + "| Conectou-se");
+            }
+            catch
+            {
+                if(contadorChavePublica == 0)
+                {
+                    Console.WriteLine("0");
+                    rsaKeyInfo.Exponent = recBuf;
+                    contadorChavePublica++;
+                }
+                else if (contadorChavePublica == 1)
+                {
+                    Console.WriteLine("1");
+                    rsaKeyInfo.Modulus = recBuf;
+                    contadorChavePublica = 0;
+                }
+               
+            }
+                  
             if (text.ToLower() == "exit") // Client wants to exit gracefully
             {
                 // Always Shutdown before closing

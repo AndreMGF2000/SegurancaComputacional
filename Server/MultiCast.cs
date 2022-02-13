@@ -54,7 +54,7 @@ namespace Server
                 Console.WriteLine("instacia multicastsocker ");
                 //Console.Write("Enter the local IP address: ");
 
-                IPAddress localIPAddr = IPAddress.Parse("192.168.7.104");
+                IPAddress localIPAddr = IPAddress.Parse("192.168.1.106");
 
                 //IPAddress localIP = IPAddress.Any;
                 EndPoint localEP = (EndPoint)new IPEndPoint(localIPAddr, multiCastPort);
