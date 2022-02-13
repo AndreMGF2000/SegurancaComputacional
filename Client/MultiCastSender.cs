@@ -2,6 +2,7 @@
 using System.Net.Sockets;
 using System.Net;
 using System.Text;
+using System.Threading;
 
 // This sender example must be used in conjunction with the listener program.
 // You must run this program as follows:
@@ -42,17 +43,53 @@ namespace Client
                 // Define a MulticastOption object specifying the multicast group
                 // address and the local IP address.
                 // The multicast group address is the same as the address used by the listener.
-                MulticastOption mcastOption;
-                mcastOption = new MulticastOption(multiCastAddress, localIPAddr);
+                MulticastOption multiCastOption;
+                multiCastOption = new MulticastOption(multiCastAddress, localIPAddr);
 
                 multiCastSocket.SetSocketOption(SocketOptionLevel.IP,
                                             SocketOptionName.AddMembership,
-                                            mcastOption);
+                                            multiCastOption);
+
+               
+                    Thread ThreadStartListenMultiCast = new Thread(new ThreadStart(StartListenMultiCast));
+                    ThreadStartListenMultiCast.Start();
+                   
+                
 
             }
             catch (Exception e)
             {
                 Console.WriteLine("\n" + e.ToString());
+            }
+        }
+
+        private static void StartListenMultiCast()
+        {
+            bool done = false;
+
+            IPEndPoint groupEP = new IPEndPoint(multiCastAddress, multiCastPort);
+            EndPoint remoteEP = (EndPoint)new IPEndPoint(IPAddress.Parse("10.0.0.103"), 55144);
+
+            try
+            {
+                while (!done)
+                {
+                    byte[] bytes = new Byte[100];
+                    Console.WriteLine("Waiting for multicast packets.......");
+
+                    multiCastSocket.ReceiveFrom(bytes, ref remoteEP);
+
+                    Console.WriteLine("Received broadcast from " + groupEP.ToString()
+                        + " : " + Encoding.ASCII.GetString(bytes, 0, bytes.Length));
+
+                }
+                Console.WriteLine("close multiCastSocket.......");
+                multiCastSocket.Close();
+            }
+
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
             }
         }
 
@@ -86,6 +123,7 @@ namespace Client
 
             // Join the listener multicast group.
             JoinMulticastGroup();
+
 
             // Broadcast the message to the listener.
             //BroadcastMessage("Hello multicast listener.");

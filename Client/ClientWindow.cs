@@ -2,6 +2,7 @@
 using System.Net.Sockets;
 using System.Net;
 using System.Text;
+using System.Threading;
 
 namespace Client
 {
@@ -25,10 +26,11 @@ namespace Client
             ClientSocket.Close();
             MultiCastIpPort = response.Split("|");
             JoinMultiCast(MultiCastIpPort[0], MultiCastIpPort[1]);
-
             while (true)
             {
                 RequestResponseMulticast();
+                
+                
             }
         }
 
