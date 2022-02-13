@@ -21,7 +21,7 @@ namespace Client
         static Socket multiCastSocket;
 
         static IPAddress multiCastIPAddress2 = IPAddress.Parse("224.168.100.2");
-        static int multiCastPort2 = 12000;
+        public static int multiCastPort2 = 12000;
         static Socket multiCastSocket2;
         private static MulticastOption multiCastOption2;
 
@@ -36,8 +36,8 @@ namespace Client
 
                 // Get the local IP address used by the listener and the sender to
                 // exchange multicast messages.
-                Console.Write("\nEnter local IPAddress for sending multicast packets: ");
-                IPAddress localIPAddr = IPAddress.Parse(Console.ReadLine());
+                //Console.Write("\nEnter local IPAddress for sending multicast packets: ");
+                IPAddress localIPAddr = IPAddress.Parse("192.168.1.106");
 
                 // Create an IPEndPoint object.
                 IPEndPoint IPlocal = new IPEndPoint(localIPAddr, 0);
@@ -61,14 +61,14 @@ namespace Client
                                          SocketType.Dgram,
                                          ProtocolType.Udp);
 
-                Console.WriteLine("instacia multicastsocker ");
+               
                 //Console.Write("Enter the local IP address: ");
 
                 IPAddress localIPAddr2 = IPAddress.Parse("192.168.1.106");
 
                 //IPAddress localIP = IPAddress.Any;
                 EndPoint localEP2 = (EndPoint)new IPEndPoint(localIPAddr2, multiCastPort2);
-                Console.WriteLine("123 ");
+                
 
                 //******************************************
                 try
@@ -82,17 +82,16 @@ namespace Client
                     BindEndPointOnSocket(localEP2);
                 }
                 //******************************************
-                Console.WriteLine("456 ");
-
+                
                 // Define a MulticastOption object specifying the multicast group
                 // address and the local IPAddress.
                 // The multicast group address is the same as the address used by the server.
                 multiCastOption2 = new MulticastOption(multiCastIPAddress2, localIPAddr2);
-                Console.WriteLine("eita ");
+                
                 multiCastSocket2.SetSocketOption(SocketOptionLevel.IP,
                                             SocketOptionName.AddMembership,
                                             multiCastOption2);
-                Console.WriteLine("agora ");
+
                 Thread ThreadStartListenMultiCast = new Thread(new ThreadStart(StartListenMultiCast));
                 ThreadStartListenMultiCast.Start();
 
@@ -122,11 +121,11 @@ namespace Client
                 while (!done)
                 {
                     byte[] bytes = new Byte[100];
-                    Console.WriteLine("Waiting for multicast packets.......");
+                    //Console.WriteLine("Waiting for multicast packets.......");
 
                     multiCastSocket2.ReceiveFrom(bytes, ref remoteEP);
 
-                    Console.WriteLine("Received broadcast from " + groupEP.ToString()
+                    Console.WriteLine("Server: " + groupEP.ToString()
                         + " : " + Encoding.ASCII.GetString(bytes, 0, bytes.Length));
 
                 }
@@ -140,7 +139,7 @@ namespace Client
             }
         }
 
-        public static void BroadcastMessage(string message)
+        public static void SendMessage(string message)
         {
             IPEndPoint endPoint;
             
@@ -149,10 +148,7 @@ namespace Client
                 //Send multicast packets to the listener.
                 endPoint = new IPEndPoint(multiCastAddress, multiCastPort);
                 multiCastSocket.SendTo(ASCIIEncoding.ASCII.GetBytes(message), endPoint);
-                Console.WriteLine("Multicast data sent.....");
-
-                
-
+                //Console.WriteLine("Lance Enviado...");
             }
             catch (Exception e)
             {

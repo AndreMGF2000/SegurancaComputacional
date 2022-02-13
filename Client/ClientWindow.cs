@@ -26,11 +26,10 @@ namespace Client
             ClientSocket.Close();
             MultiCastIpPort = response.Split("|");
             JoinMultiCast(MultiCastIpPort[0], MultiCastIpPort[1]);
+            RequestActualBid();
             while (true)
             {
-                RequestResponseMulticast();
-                
-                
+                RequestResponseMulticast();           
             }
         }
 
@@ -68,9 +67,49 @@ namespace Client
 
         private static void RequestResponseMulticast()
         {
-            Console.Write("Type in Multicast chat: ");
+            RequestBidAndValidate();
+        }
+
+        private static void RequestActualBid()
+        {
+            string message = Convert.ToString(MultiCastSender.multiCastPort2);
+            MultiCastSender.SendMessage("P"+message);
+        }
+
+        private static void RequestBidAndValidate()
+        {
+            string message = GetBid();
+            if (IsPositiveNumber(message))
+            {
+                MultiCastSender.SendMessage(MultiCastSender.multiCastPort2+"|"+ message);
+            }
+            else
+            {
+                Console.WriteLine("Digite um Novo Lance:");
+                RequestBidAndValidate();
+            }
+        }
+
+        private static bool IsPositiveNumber(string message)
+        {
+            int intMessage = 0;
+            try
+            {
+                intMessage = int.Parse(message);
+                return intMessage > 0;
+            }
+            catch
+            {
+                Console.WriteLine("Digite apenas numeros positivos para o lance!");
+                return false;
+            }
+        }
+
+        private static string GetBid()
+        {
+            //Console.Write("Digite o valor do lance: ");
             string message = Console.ReadLine();
-            MultiCastSender.BroadcastMessage(message);
+            return message;
         }
 
         private static void Exit()

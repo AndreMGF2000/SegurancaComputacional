@@ -28,6 +28,8 @@ namespace Server
         private static Socket multiCastSocket;
         private static MulticastOption multiCastOption;
 
+        private static int ActualBid = 100;
+
         private static void MulticastOptionProperties()
         {
             Console.WriteLine("Current multicast group is: " + multiCastOption.Group);
@@ -89,19 +91,53 @@ namespace Server
                     Console.WriteLine("Received broadcast from " + groupEP.ToString() 
                         + " : " + Encoding.ASCII.GetString(bytes, 0, bytes.Length));
 
+
                     Socket socketEnviador = new Socket(AddressFamily.InterNetwork,
                                          SocketType.Dgram,
                                          ProtocolType.Udp);
 
-                    
-
-                    for (int i = 0; i < 100; i++)
+                    string messageReceived = Encoding.ASCII.GetString(bytes, 0, bytes.Length);
+              
+                    if (messageReceived.Contains("P"))
                     {
-                        IPEndPoint endPoint = new IPEndPoint(multiCastIPAddress, multiCastPort+1000+i);
-
-                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes(Encoding.ASCII.GetString(bytes, 0, bytes.Length)), endPoint);                       
+                        int clientPort = int.Parse(messageReceived.Trim('P'));
+                        
+                        IPEndPoint endPoint = new IPEndPoint(multiCastIPAddress, clientPort);
+                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Bem vindo ao Leilao! " +
+                            "Item atual eh X " +
+                            "Lance atual eh Y"), endPoint);
+                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Digite um Novo Lance:"), endPoint);
                     }
-                    Console.WriteLine("Mensagem devolvida para todos no multicast.....");
+                    else
+                    {
+                        string[] messageReceivedList = new string[2];
+                        messageReceivedList = messageReceived.Split("|");
+                        string clientPort = messageReceivedList[0];
+                        string clientBid = messageReceivedList[1];
+                        
+                        if (ActualBid >= int.Parse(clientBid))
+                        {
+                            IPEndPoint endPoint = new IPEndPoint(multiCastIPAddress, int.Parse(clientPort));
+                            socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Seu lance foi abaixo do Lance atual"), endPoint);
+                            socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Digite um Novo Lance:"), endPoint);
+                        }
+                        else
+                        {
+                            ActualBid = int.Parse(clientBid);
+                            for (int i = 0; i < 100; i++)
+                            {
+                                IPEndPoint endPoint = new IPEndPoint(multiCastIPAddress, multiCastPort + 1000 + i);
+
+                                socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("O Atual agora eh: "+ActualBid), endPoint);
+                                socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Digite um Novo Lance:"), endPoint);
+                            }
+                            Console.WriteLine("Mensagem devolvida para todos no multicast.....");
+                        }
+                    }
+
+
+                    
+                    
 
 
                 }
