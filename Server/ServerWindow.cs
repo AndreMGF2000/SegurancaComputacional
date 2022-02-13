@@ -19,8 +19,12 @@ namespace Server
         static void Main()
         {
             Console.Title = "Server";
+            MultiCast.FirstAuction();
             SetupServer();
-            Console.ReadLine(); // When we press enter close everything
+            while (true)
+            {
+                MultiCast.ManageAuction();
+            }
             CloseAllSockets();
         }
 
@@ -110,5 +114,7 @@ namespace Server
             clientSockets.Remove(current);
             //current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, current);
         }
+
+        
     }
 }

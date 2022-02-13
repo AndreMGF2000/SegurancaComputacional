@@ -27,8 +27,14 @@ namespace Server
         private static int multiCastPort;
         private static Socket multiCastSocket;
         private static MulticastOption multiCastOption;
+        private static Socket socketEnviador = new Socket(AddressFamily.InterNetwork,
+                                         SocketType.Dgram,
+                                         ProtocolType.Udp);
+        private static string auctionItem = "";
+        private static int actualAuctionBid = 0;
 
-        private static int ActualBid = 100;
+        private static int actualClientPort = 0;
+        private static string actualClientName = "";
 
         private static void MulticastOptionProperties()
         {
@@ -48,7 +54,7 @@ namespace Server
                 Console.WriteLine("instacia multicastsocker ");
                 //Console.Write("Enter the local IP address: ");
 
-                IPAddress localIPAddr = IPAddress.Parse("192.168.1.106");
+                IPAddress localIPAddr = IPAddress.Parse("192.168.7.104");
 
                 //IPAddress localIP = IPAddress.Any;
                 EndPoint localEP = (EndPoint)new IPEndPoint(localIPAddr, multiCastPort);
@@ -92,9 +98,7 @@ namespace Server
                         + " : " + Encoding.ASCII.GetString(bytes, 0, bytes.Length));
 
 
-                    Socket socketEnviador = new Socket(AddressFamily.InterNetwork,
-                                         SocketType.Dgram,
-                                         ProtocolType.Udp);
+                    
 
                     string messageReceived = Encoding.ASCII.GetString(bytes, 0, bytes.Length);
               
@@ -103,9 +107,9 @@ namespace Server
                         int clientPort = int.Parse(messageReceived.Trim('P'));
                         
                         IPEndPoint endPoint = new IPEndPoint(multiCastIPAddress, clientPort);
-                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Bem vindo ao Leilao! " +
-                            "Item atual eh X " +
-                            "Lance atual eh Y"), endPoint);
+                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Bem vindo ao Leilao!"), endPoint);
+                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Item atual eh " + auctionItem), endPoint);
+                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Lance atual eh " + actualAuctionBid), endPoint);
                         socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Digite um Novo Lance:"), endPoint);
                     }
                     else
@@ -114,21 +118,26 @@ namespace Server
                         messageReceivedList = messageReceived.Split("|");
                         string clientPort = messageReceivedList[0];
                         string clientBid = messageReceivedList[1];
-                        
-                        if (ActualBid >= int.Parse(clientBid))
+                        string clientName = messageReceivedList[2];
+
+                        if (actualAuctionBid >= int.Parse(clientBid))
                         {
                             IPEndPoint endPoint = new IPEndPoint(multiCastIPAddress, int.Parse(clientPort));
-                            socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Seu lance foi abaixo do Lance atual"), endPoint);
+                            socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Seu lance foi abaixo ou igual ao lance atual"), endPoint);
                             socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Digite um Novo Lance:"), endPoint);
                         }
                         else
                         {
-                            ActualBid = int.Parse(clientBid);
+                            actualAuctionBid = int.Parse(clientBid);
+                            actualClientPort = int.Parse(clientPort);
+                            actualClientName = clientName;
+
                             for (int i = 0; i < 100; i++)
                             {
                                 IPEndPoint endPoint = new IPEndPoint(multiCastIPAddress, multiCastPort + 1000 + i);
 
-                                socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("O Atual agora eh: "+ActualBid), endPoint);
+                                socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Item atual eh " + auctionItem), endPoint);
+                                socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Lance atual eh " + actualAuctionBid), endPoint);
                                 socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Digite um Novo Lance:"), endPoint);
                             }
                             Console.WriteLine("Mensagem devolvida para todos no multicast.....");
@@ -168,6 +177,106 @@ namespace Server
 
             // Receive broadcast messages.
             ReceiveBroadcastMessages();
+        }
+
+        public static void FirstAuction()
+        {
+
+            Console.WriteLine("Digite: 'name'|'value' para iniciar o primeiro leilao");
+            string auction = Console.ReadLine();
+
+            if (auction.Contains("|"))
+            {
+                string[] auctionDivided = auction.Split("|");
+                string name = auctionDivided[0];
+                string value = auctionDivided[1];
+                if (IsPositiveNumber(value))
+                {
+                    auctionItem = name;
+                    actualAuctionBid = Convert.ToInt32(value);
+
+                    Console.WriteLine("Primeiro Leilao criado com sucesso");
+                }
+                else
+                {
+                    Console.WriteLine("Value invalido, digite um numero positivo");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Comando invalido, tente novamente");
+            }
+
+        }
+
+        public static void ManageAuction()
+        {
+
+            Console.WriteLine("Digite: 'name'|'value' para encerrar o leilão atual e iniciar um novo");
+            string auction = Console.ReadLine();
+
+            if (auction.Contains("|"))
+            {
+                string[] auctionDivided = auction.Split("|");
+                string name = auctionDivided[0];
+                string value = auctionDivided[1];
+                if (IsPositiveNumber(value))
+                {
+                    //Envia mensagem vencedor
+                    for (int i = 0; i < 100; i++)
+                    {
+                        IPEndPoint endPoint = new IPEndPoint(multiCastIPAddress, multiCastPort + 1000 + i);
+
+                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Leilao encerrado!!!"), endPoint);
+                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Vencedor foi:"), endPoint);
+                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes(actualClientName), endPoint);
+                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Item era " + auctionItem), endPoint);
+                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Lance final foi " + actualAuctionBid), endPoint);
+                    }
+
+                    IPEndPoint endPointVencedor = new IPEndPoint(multiCastIPAddress, actualClientPort);
+                    socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Parabens, voce venceu o leilao!!!"), endPointVencedor);
+                    socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Entre em contato com o telefone 999111888"), endPointVencedor);
+
+                    auctionItem = name;
+                    actualAuctionBid = Convert.ToInt32(value);
+
+                    //Envia mensagem novo leilão
+                    for (int i = 0; i < 100; i++)
+                    {
+                        IPEndPoint endPoint = new IPEndPoint(multiCastIPAddress, multiCastPort + 1000 + i);
+
+                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Novo leilao iniciado!!!"), endPoint);
+                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Item atual eh " + auctionItem), endPoint);
+                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Lance atual eh " + actualAuctionBid), endPoint);
+                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Digite um Novo Lance:"), endPoint);
+                    }
+                    Console.WriteLine("Mensagem devolvida para todos no multicast.....");
+                }
+                else
+                {
+                    Console.WriteLine("Value inválido, digite um número positivo");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Comando inválido, tente novamente");            
+            }
+
+        }
+
+        private static bool IsPositiveNumber(string message)
+        {
+            try
+            {
+                int intMessage = int.Parse(message);
+                return intMessage > 0;
+            }
+            catch
+            {
+                Console.WriteLine("Digite apenas numeros positivos para o lance!");
+                return false;
+            }
         }
     }
 }

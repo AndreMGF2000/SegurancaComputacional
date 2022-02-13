@@ -12,7 +12,7 @@ namespace Client
             (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
         private const int PORT = 100;
-
+        private static string login = "";
         private static String response = new String("");
         private static string[] MultiCastIpPort;
 
@@ -61,7 +61,7 @@ namespace Client
         private static void RequestResponseServer()
         {
             Console.WriteLine(@"<Type ""exit"" to properly disconnect client>");
-            SendRequest();
+            UserLogin();
             ReceiveResponse();
         }
 
@@ -81,7 +81,7 @@ namespace Client
             string message = GetBid();
             if (IsPositiveNumber(message))
             {
-                MultiCastSender.SendMessage(MultiCastSender.multiCastPort2+"|"+ message);
+                MultiCastSender.SendMessage(MultiCastSender.multiCastPort2+"|"+ message+"|"+login);
             }
             else
             {
@@ -92,10 +92,9 @@ namespace Client
 
         private static bool IsPositiveNumber(string message)
         {
-            int intMessage = 0;
             try
             {
-                intMessage = int.Parse(message);
+                int intMessage = int.Parse(message);
                 return intMessage > 0;
             }
             catch
@@ -120,14 +119,14 @@ namespace Client
             //Environment.Exit(0);
         }
 
-        private static void SendRequest()
+        private static void UserLogin()
         {
             Console.Write("Type Your Username: ");
-            string request = Console.ReadLine();
-            Console.Title = request;
-            SendString(request);
+            login = Console.ReadLine();
+            Console.Title = login;
+            SendString(login);
 
-            if (request.ToLower() == "exit")
+            if (login.ToLower() == "exit")
             {
                 Exit();
             }
