@@ -72,7 +72,7 @@ namespace Client
 
         private static void RequestActualBid()
         {
-            string message = Convert.ToString(MultiCastSender.multiCastPort2);
+            string message = Convert.ToString(MultiCastSender.multiCastPortListener);
             MultiCastSender.SendMessage("P"+message);
         }
 
@@ -81,7 +81,7 @@ namespace Client
             string message = GetBid();
             if (IsPositiveNumber(message))
             {
-                MultiCastSender.SendMessage(MultiCastSender.multiCastPort2+"|"+ message+"|"+login);
+                MultiCastSender.SendMessage(MultiCastSender.multiCastPortListener+"|"+ message+"|"+login);
             }
             else
             {

@@ -20,10 +20,10 @@ namespace Client
         static int multiCastPort;
         static Socket multiCastSocket;
 
-        static IPAddress multiCastIPAddress2 = IPAddress.Parse("224.168.100.2");
-        public static int multiCastPort2 = 12000;
-        static Socket multiCastSocket2;
-        private static MulticastOption multiCastOption2;
+        static IPAddress multiCastIPAddressListener = IPAddress.Parse("224.168.100.2");
+        public static int multiCastPortListener = 12000;
+        static Socket multiCastSocketListener;
+        private static MulticastOption multiCastOptionListener;
 
         static void JoinMulticastGroup()
         {
@@ -57,40 +57,31 @@ namespace Client
 
 
                 //---------------------------------------
-                multiCastSocket2 = new Socket(AddressFamily.InterNetwork,
+                multiCastSocketListener = new Socket(AddressFamily.InterNetwork,
                                          SocketType.Dgram,
                                          ProtocolType.Udp);
 
                
                 //Console.Write("Enter the local IP address: ");
 
-                IPAddress localIPAddr2 = IPAddress.Parse("192.168.7.104");
+                IPAddress localIPAddrListener = IPAddress.Parse("192.168.7.104");
 
                 //IPAddress localIP = IPAddress.Any;
-                EndPoint localEP2 = (EndPoint)new IPEndPoint(localIPAddr2, multiCastPort2);
+                EndPoint localEPListener = (EndPoint)new IPEndPoint(localIPAddrListener, multiCastPortListener);
                 
 
                 //******************************************
-                try
-                {
-                    BindEndPointOnSocket(localEP2);
-                }
-                catch
-                {
-                    multiCastPort2++;
-                    localEP2 = (EndPoint)new IPEndPoint(localIPAddr2, multiCastPort2);
-                    BindEndPointOnSocket(localEP2);
-                }
+                BindEndPointOnSocket(localIPAddrListener);
                 //******************************************
                 
                 // Define a MulticastOption object specifying the multicast group
                 // address and the local IPAddress.
                 // The multicast group address is the same as the address used by the server.
-                multiCastOption2 = new MulticastOption(multiCastIPAddress2, localIPAddr2);
+                multiCastOptionListener = new MulticastOption(multiCastIPAddressListener, localIPAddrListener);
                 
-                multiCastSocket2.SetSocketOption(SocketOptionLevel.IP,
+                multiCastSocketListener.SetSocketOption(SocketOptionLevel.IP,
                                             SocketOptionName.AddMembership,
-                                            multiCastOption2);
+                                            multiCastOptionListener);
 
                 Thread ThreadStartListenMultiCast = new Thread(new ThreadStart(StartListenMultiCast));
                 ThreadStartListenMultiCast.Start();
@@ -104,16 +95,25 @@ namespace Client
             }
         }
 
-        private static void BindEndPointOnSocket(EndPoint localEP2)
+        private static void BindEndPointOnSocket(IPAddress localIPAddrListener)
         {
-            multiCastSocket2.Bind(localEP2);
+            try 
+            {
+                EndPoint localEP2 = (EndPoint)new IPEndPoint(localIPAddrListener, multiCastPortListener);
+                multiCastSocketListener.Bind(localEP2);
+            }
+            catch 
+            {
+                multiCastPortListener++;
+                BindEndPointOnSocket(localIPAddrListener);
+            }
         }
 
         private static void StartListenMultiCast()
         {
             bool done = false;
 
-            IPEndPoint groupEP = new IPEndPoint(multiCastIPAddress2, multiCastPort2);
+            IPEndPoint groupEP = new IPEndPoint(multiCastIPAddressListener, multiCastPortListener);
             EndPoint remoteEP = (EndPoint)new IPEndPoint(IPAddress.Any, 0);
 
             try
@@ -123,14 +123,14 @@ namespace Client
                     byte[] bytes = new Byte[100];
                     //Console.WriteLine("Waiting for multicast packets.......");
 
-                    multiCastSocket2.ReceiveFrom(bytes, ref remoteEP);
+                    multiCastSocketListener.ReceiveFrom(bytes, ref remoteEP);
 
                     Console.WriteLine("Server: " + groupEP.ToString()
                         + " : " + Encoding.ASCII.GetString(bytes, 0, bytes.Length));
 
                 }
                 Console.WriteLine("close multiCastSocket.......");
-                multiCastSocket2.Close();
+                multiCastSocketListener.Close();
             }
 
             catch (Exception e)
