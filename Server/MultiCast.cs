@@ -43,9 +43,10 @@ namespace Server
                                          SocketType.Dgram,
                                          ProtocolType.Udp);
 
+                Console.WriteLine("instacia multicastsocker ");
                 //Console.Write("Enter the local IP address: ");
 
-                IPAddress localIPAddr = IPAddress.Parse("192.168.7.104");
+                IPAddress localIPAddr = IPAddress.Parse("10.0.0.103");
 
                 //IPAddress localIP = IPAddress.Any;
                 EndPoint localEP = (EndPoint)new IPEndPoint(localIPAddr, multiCastPort);
@@ -72,7 +73,7 @@ namespace Server
         private static void ReceiveBroadcastMessages()
         {
             bool done = false;
-            byte[] bytes = new Byte[100];
+            
             IPEndPoint groupEP = new IPEndPoint(multiCastIPAddress, multiCastPort);
             EndPoint remoteEP = (EndPoint)new IPEndPoint(IPAddress.Any, 0);
 
@@ -80,14 +81,14 @@ namespace Server
             {
                 while (!done)
                 {
+                    byte[] bytes = new Byte[100];
                     Console.WriteLine("Waiting for multicast packets.......");
-                    Console.WriteLine("Enter ^C to terminate.");
 
                     multiCastSocket.ReceiveFrom(bytes, ref remoteEP);
 
-                    Console.WriteLine("Received broadcast from {0} :\n {1}\n",
-                      groupEP.ToString(),
-                      Encoding.ASCII.GetString(bytes, 0, bytes.Length));
+                    Console.WriteLine("Received broadcast from " + groupEP.ToString() 
+                        + " : " + Encoding.ASCII.GetString(bytes, 0, bytes.Length));
+                      
                 }
                 Console.WriteLine("close multiCastSocket.......");
                 multiCastSocket.Close();

@@ -88,7 +88,7 @@ namespace Client
             JoinMulticastGroup();
 
             // Broadcast the message to the listener.
-            BroadcastMessage("Hello multicast listener.");
+            //BroadcastMessage("Hello multicast listener.");
         }
     }
 }

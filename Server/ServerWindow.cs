@@ -14,6 +14,7 @@ namespace Server
         private const int BUFFER_SIZE = 2048;
         private const int PORT = 100;
         private static readonly byte[] buffer = new byte[BUFFER_SIZE];
+        
 
         static void Main()
         {
@@ -92,7 +93,7 @@ namespace Server
             byte[] recBuf = new byte[received];
             Array.Copy(buffer, recBuf, received);
             string text = Encoding.ASCII.GetString(recBuf);
-            Console.WriteLine("Received Text: " + text);
+            Console.WriteLine("Cliente |" + text + "| Conectou-se");
             if (text.ToLower() == "exit") // Client wants to exit gracefully
             {
                 // Always Shutdown before closing
