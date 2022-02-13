@@ -28,13 +28,11 @@ namespace Server
         private static Socket multiCastSocket;
         private static MulticastOption multiCastOption;
 
-
         private static void MulticastOptionProperties()
         {
             Console.WriteLine("Current multicast group is: " + multiCastOption.Group);
             Console.WriteLine("Current multicast local address is: " + multiCastOption.LocalAddress);
         }
-
 
         private static void StartMulticast()
         {
@@ -47,7 +45,7 @@ namespace Server
 
                 //Console.Write("Enter the local IP address: ");
 
-                IPAddress localIPAddr = IPAddress.Parse("10.0.0.103");
+                IPAddress localIPAddr = IPAddress.Parse("192.168.7.104");
 
                 //IPAddress localIP = IPAddress.Any;
                 EndPoint localEP = (EndPoint)new IPEndPoint(localIPAddr, multiCastPort);
@@ -100,7 +98,7 @@ namespace Server
                 Console.WriteLine(e.ToString());
             }
         }
-       
+
         public static void Initialize()
         {
             // Initialize the multicast address group and multicast port.

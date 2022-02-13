@@ -14,19 +14,25 @@ namespace Client
 
         private static String response = new String("");
         private static string[] MultiCastIpPort;
+
         static void Main()
         {
             Console.Title = "Client";
             ConnectToServer();
-            RequestResponse();
+            RequestResponseServer();
             //Exit();
             ClientSocket.Shutdown(SocketShutdown.Both);
             ClientSocket.Close();
             MultiCastIpPort = response.Split("|");
             JoinMultiCast(MultiCastIpPort[0], MultiCastIpPort[1]);
+
+            while (true)
+            {
+                RequestResponseMulticast();
+            }
         }
 
-        
+
 
         private static void ConnectToServer()
         {
@@ -51,18 +57,20 @@ namespace Client
             Console.WriteLine("Connected");
         }
 
-        private static void RequestResponse()
+        private static void RequestResponseServer()
         {
             Console.WriteLine(@"<Type ""exit"" to properly disconnect client>");
-
             SendRequest();
             ReceiveResponse();
-            
         }
 
-        /// <summary>
-        /// Close socket and exit program.
-        /// </summary>
+        private static void RequestResponseMulticast()
+        {
+            Console.Write("Type in Multicast chat: ");
+            string message = Console.ReadLine();
+            MultiCastSender.BroadcastMessage(message);
+        }
+
         private static void Exit()
         {
             SendString("exit"); // Tell the server we are exiting
@@ -84,9 +92,6 @@ namespace Client
             }
         }
 
-        /// <summary>
-        /// Sends a string to the server with ASCII encoding.
-        /// </summary>
         private static void SendString(string text)
         {
             byte[] buffer = Encoding.ASCII.GetBytes(text);
@@ -105,9 +110,16 @@ namespace Client
             response = text;
         }
 
-        private static void JoinMultiCast(string MutiCastIPAddress, string MultiCastPort)
+        private static void JoinMultiCast(string MultiCastIPAddress, string MultiCastPort)
         {
-            MultiCastSender.Initialize(MutiCastIPAddress,  MultiCastPort);
+            try
+            {
+                MultiCastSender.Initialize(MultiCastIPAddress, MultiCastPort);
+            }
+            catch
+            {
+                Console.WriteLine("Falha ao acessar MultiCast");
+            }
         }
 
     }
