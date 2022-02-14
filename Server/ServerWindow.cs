@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
@@ -17,19 +18,22 @@ namespace Server
         private static readonly byte[] buffer = new byte[BUFFER_SIZE];
         private static RSAParameters rsaKeyInfo;
         private static int contadorChavePublica = 0;
+        private static RSA rsa;
+        public static Aes aes;
         static void Main()
         {
+            //CloseAllSockets();
             Console.Title = "Server";
             CreateAssimetricKey();
+            CreateSimetricKey();
             MultiCast.FirstAuction();
             SetupServer();
             while (true)
             {
                 MultiCast.ManageAuction();
             }
-            CloseAllSockets();
+            
         }
-
         private static void SetupServer()
         {
             Console.WriteLine("Setting up server...");
@@ -74,18 +78,27 @@ namespace Server
 
             clientSockets.Add(socket);
             socket.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, socket);
-            Console.WriteLine("Client connected, waiting for request...");
-            serverSocket.BeginAccept(AcceptCallback, null);
+            
         }
 
 
         private static void CreateAssimetricKey()
         {
             //Generate a public/private key pair.  
-            RSA rsa = RSA.Create();
+            rsa = RSA.Create();
             //Save the public key information to an RSAParameters structure.  
             rsaKeyInfo = rsa.ExportParameters(false);
         }
+
+        private static void CreateSimetricKey()
+        {
+            aes = Aes.Create();
+            aes.GenerateIV();
+            aes.GenerateKey();
+        }
+
+        
+
         private static void ReceiveCallback(IAsyncResult AR)
         {
             Socket current = (Socket)AR.AsyncState;
@@ -107,43 +120,70 @@ namespace Server
             byte[] recBuf = new byte[received];
             Array.Copy(buffer, recBuf, received);
             string text = "";
-            try
+            if(contadorChavePublica == 0)
             {
+                rsaKeyInfo.Exponent = recBuf;
+                contadorChavePublica++;
+                Console.WriteLine("0");
+                
+            }
+            else if (contadorChavePublica == 1)
+            {
+                Console.WriteLine("1");
+                rsaKeyInfo.Modulus = recBuf;
+                contadorChavePublica++;
+            }
+            else if (contadorChavePublica == 2)
+            {
+                Console.WriteLine("2");
                 text = Encoding.ASCII.GetString(recBuf);
                 Console.WriteLine("Cliente |" + text + "| Conectou-se");
+                contadorChavePublica++;
             }
-            catch
+
+            //if (text.ToLower() == "exit") // Client wants to exit gracefully
+            //{
+            //    // Always Shutdown before closing
+            //    current.Shutdown(SocketShutdown.Both);
+            //    current.Close();
+            //    clientSockets.Remove(current);
+            //    Console.WriteLine("Client disconnected");
+            //    return;
+            //}
+
+            if (contadorChavePublica == 3)
             {
-                if(contadorChavePublica == 0)
-                {
-                    Console.WriteLine("0");
-                    rsaKeyInfo.Exponent = recBuf;
-                    contadorChavePublica++;
-                }
-                else if (contadorChavePublica == 1)
-                {
-                    Console.WriteLine("1");
-                    rsaKeyInfo.Modulus = recBuf;
-                    contadorChavePublica = 0;
-                }
-               
-            }
-                  
-            if (text.ToLower() == "exit") // Client wants to exit gracefully
-            {
-                // Always Shutdown before closing
+                contadorChavePublica = 0;
+
+                
+
+                
+
+                //tem que responder o cliente direito aqui
+                byte[] data = Encoding.ASCII.GetBytes("224.168.100.2|11000");
+                rsa.ImportParameters(rsaKeyInfo);
+                byte[] dataEncrypeted = rsa.Encrypt(data, RSAEncryptionPadding.Pkcs1);
+                byte[] IVEncrypeted = rsa.Encrypt(aes.IV, RSAEncryptionPadding.Pkcs1);
+                byte[] KeyEncrypeted = rsa.Encrypt(aes.Key, RSAEncryptionPadding.Pkcs1);
+
+                current.Send(dataEncrypeted);
+                Thread.Sleep(500);
+                current.Send(IVEncrypeted);
+                Thread.Sleep(500);
+                current.Send(KeyEncrypeted);
+                Thread.Sleep(500);
+
                 current.Shutdown(SocketShutdown.Both);
                 current.Close();
                 clientSockets.Remove(current);
-                Console.WriteLine("Client disconnected");
-                return;
+                Console.WriteLine("Client connected, waiting for request...");
             }
-            byte[] data = Encoding.ASCII.GetBytes("224.168.100.2|11000");
-            current.Send(data);
-            current.Shutdown(SocketShutdown.Both);
-            current.Close();
-            clientSockets.Remove(current);
-            //current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, current);
+            serverSocket.BeginAccept(AcceptCallback, null);
+            if(contadorChavePublica != 0)
+            {
+                current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, current);
+            }
+ 
         }
 
         
