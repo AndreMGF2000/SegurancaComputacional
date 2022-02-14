@@ -142,7 +142,7 @@ namespace Client
             string message = Convert.ToString(MultiCastSender.multiCastPortListener);
             Byte[] messageEncrypted = SimetricEncrypt("P" + message,Key,IV);
             message = SimetricDecrypt(messageEncrypted, Key, IV);
-            Console.WriteLine(message);
+            Console.WriteLine("Ouvindo: "+message);
             MultiCastSender.SendMessage(messageEncrypted);
         }
 
@@ -156,6 +156,7 @@ namespace Client
             }
             else
             {
+                Console.WriteLine("Digite apenas numeros positivos para o lance!");
                 Console.WriteLine("Digite um Novo Lance:");
                 RequestBidAndValidate();
             }
@@ -170,7 +171,6 @@ namespace Client
             }
             catch
             {
-                Console.WriteLine("Digite apenas numeros positivos para o lance!");
                 return false;
             }
         }

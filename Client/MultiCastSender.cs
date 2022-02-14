@@ -42,7 +42,7 @@ namespace Client
                 // Get the local IP address used by the listener and the sender to
                 // exchange multicast messages.
                 //Console.Write("\nEnter local IPAddress for sending multicast packets: ");
-                IPAddress localIPAddr = IPAddress.Parse("192.168.1.106");
+                IPAddress localIPAddr = IPAddress.Parse("192.168.7.104");
 
                 // Create an IPEndPoint object.
                 IPEndPoint IPlocal = new IPEndPoint(localIPAddr, 0);
@@ -69,7 +69,7 @@ namespace Client
                
                 //Console.Write("Enter the local IP address: ");
 
-                IPAddress localIPAddrListener = IPAddress.Parse("192.168.1.106");
+                IPAddress localIPAddrListener = IPAddress.Parse("192.168.7.104");
 
                 //IPAddress localIP = IPAddress.Any;
                 EndPoint localEPListener = (EndPoint)new IPEndPoint(localIPAddrListener, multiCastPortListener);
@@ -150,13 +150,13 @@ namespace Client
 
         private static byte[] CleanByteArray(byte[] byteSujo)
         {
-            // populate foo
             int byteCounter = byteSujo.Length - 1;
             while (byteSujo[byteCounter] == 0)
                 --byteCounter;
-            // now foo[i] is the last non-zero byte
             byte[] byteLimpo = new byte[byteCounter + 1];
             Array.Copy(byteSujo, byteLimpo, byteCounter + 1);
+
+
             return byteLimpo;
         }
 

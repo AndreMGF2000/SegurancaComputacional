@@ -124,18 +124,17 @@ namespace Server
             {
                 rsaKeyInfo.Exponent = recBuf;
                 contadorChavePublica++;
-                Console.WriteLine("0");
+                Console.WriteLine("Recebendo rsaKey.Exponent");
                 
             }
             else if (contadorChavePublica == 1)
             {
-                Console.WriteLine("1");
+                Console.WriteLine("Recebendo rsaKey.Modulus");
                 rsaKeyInfo.Modulus = recBuf;
                 contadorChavePublica++;
             }
             else if (contadorChavePublica == 2)
             {
-                Console.WriteLine("2");
                 text = Encoding.ASCII.GetString(recBuf);
                 Console.WriteLine("Cliente |" + text + "| Conectou-se");
                 contadorChavePublica++;
