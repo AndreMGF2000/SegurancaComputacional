@@ -3,6 +3,8 @@ using System.Net.Sockets;
 using System.Net;
 using System.Text;
 using System.Threading;
+using System.Security.Cryptography;
+using System.IO;
 
 // This sender example must be used in conjunction with the listener program.
 // You must run this program as follows:
@@ -24,6 +26,9 @@ namespace Client
         public static int multiCastPortListener = 12000;
         static Socket multiCastSocketListener;
         private static MulticastOption multiCastOptionListener;
+
+        private static byte[] iv;
+        private static byte[] key;
 
         static void JoinMulticastGroup()
         {
@@ -120,13 +125,17 @@ namespace Client
             {
                 while (!done)
                 {
-                    byte[] bytes = new Byte[100];
+                    byte[] byteSujo = new Byte[100];
                     //Console.WriteLine("Waiting for multicast packets.......");
 
-                    multiCastSocketListener.ReceiveFrom(bytes, ref remoteEP);
+                    multiCastSocketListener.ReceiveFrom(byteSujo, ref remoteEP);
+
+                    byte[] byteLimpo = CleanByteArray(byteSujo);
+
+                    string messageReceivedDecrypeted = SimetricDecrypt(byteLimpo, key, iv);
 
                     Console.WriteLine("Server: " + groupEP.ToString()
-                        + " : " + Encoding.ASCII.GetString(bytes, 0, bytes.Length));
+                        + " : " + messageReceivedDecrypeted);
 
                 }
                 Console.WriteLine("close multiCastSocket.......");
@@ -139,7 +148,19 @@ namespace Client
             }
         }
 
-        public static void SendMessage(string message)
+        private static byte[] CleanByteArray(byte[] byteSujo)
+        {
+            int byteCounter = byteSujo.Length - 1;
+            while (byteSujo[byteCounter] == 0)
+                --byteCounter;
+            byte[] byteLimpo = new byte[byteCounter + 1];
+            Array.Copy(byteSujo, byteLimpo, byteCounter + 1);
+
+
+            return byteLimpo;
+        }
+
+        public static void SendMessage(Byte[] message)
         {
             IPEndPoint endPoint;
             
@@ -147,7 +168,7 @@ namespace Client
             {
                 //Send multicast packets to the listener.
                 endPoint = new IPEndPoint(multiCastAddress, multiCastPort);
-                multiCastSocket.SendTo(ASCIIEncoding.ASCII.GetBytes(message), endPoint);
+                multiCastSocket.SendTo(message, endPoint);
                 //Console.WriteLine("Lance Enviado...");
             }
             catch (Exception e)
@@ -158,7 +179,30 @@ namespace Client
             //multiCastSocket.Close();
         }
 
-        public static void Initialize(string MutiCastIPAddress, string MultiCastPort)
+        private static string SimetricDecrypt(byte[] cipherText, byte[] Key, byte[] IV)
+        {
+            string plaintext = null;
+            // Create AesManaged    
+            using (AesManaged aes = new AesManaged())
+            {
+                // Create a decryptor    
+                ICryptoTransform decryptor = aes.CreateDecryptor(Key, IV);
+                // Create the streams used for decryption.    
+                using (MemoryStream ms = new MemoryStream(cipherText))
+                {
+                    // Create crypto stream    
+                    using (CryptoStream cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
+                    {
+                        // Read crypto stream    
+                        using (StreamReader reader = new StreamReader(cs))
+                            plaintext = reader.ReadToEnd();
+                    }
+                }
+            }
+            return plaintext;
+        }
+
+        public static void Initialize(string MutiCastIPAddress, string MultiCastPort, Byte[] Key, Byte[] IV)
         {
             // Initialize the multicast address group and multicast port.
             // Both address and port are selected from the allowed sets as
@@ -166,6 +210,9 @@ namespace Client
             // as the values used by the sender.
             multiCastAddress = IPAddress.Parse(MutiCastIPAddress);
             multiCastPort = int.Parse(MultiCastPort);
+
+            iv = IV;
+            key = Key;
 
             // Join the listener multicast group.
             JoinMulticastGroup();

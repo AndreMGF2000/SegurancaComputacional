@@ -1,6 +1,8 @@
 ﻿using System;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 
 // This is the listener example that shows how to use the MulticastOption class.
@@ -35,6 +37,9 @@ namespace Server
 
         private static int actualClientPort = 0;
         private static string actualClientName = "";
+
+        private static byte[] IV = ServerWindow.aes.IV;
+        private static byte[] Key = ServerWindow.aes.Key;
 
         private static void MulticastOptionProperties()
         {
@@ -78,7 +83,7 @@ namespace Server
             }
         }
 
-        private static void ReceiveBroadcastMessages()
+        private static void ReceiveMulticastMessages()
         {
             bool done = false;
             
@@ -89,33 +94,34 @@ namespace Server
             {
                 while (!done)
                 {
-                    byte[] bytes = new Byte[100];
+                    byte[] byteSujo = new Byte[100];
                     Console.WriteLine("Waiting for multicast packets.......");
 
-                    multiCastSocket.ReceiveFrom(bytes, ref remoteEP);
+                    multiCastSocket.ReceiveFrom(byteSujo, ref remoteEP);
 
-                    Console.WriteLine("Received broadcast from " + groupEP.ToString() 
-                        + " : " + Encoding.ASCII.GetString(bytes, 0, bytes.Length));
+                    byte[] byteLimpo = CleanByteArray(byteSujo);
+
+                    string messageReceivedDecrypeted = SimetricDecrypt(byteLimpo, Key, IV);
 
 
-                    
+                    Console.WriteLine("Received message from " + groupEP.ToString()
+                        + " : " + messageReceivedDecrypeted);
 
-                    string messageReceived = Encoding.ASCII.GetString(bytes, 0, bytes.Length);
-              
-                    if (messageReceived.Contains("P"))
+
+                    if (messageReceivedDecrypeted.Contains("P"))
                     {
-                        int clientPort = int.Parse(messageReceived.Trim('P'));
-                        
+                        int clientPort = int.Parse(messageReceivedDecrypeted.Trim('P'));
+
                         IPEndPoint endPoint = new IPEndPoint(multiCastIPAddress, clientPort);
-                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Bem vindo ao Leilao!"), endPoint);
-                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Item atual eh " + auctionItem), endPoint);
-                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Lance atual eh " + actualAuctionBid), endPoint);
-                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Digite um Novo Lance:"), endPoint);
+                        SendEncrypetedMessage("Bem vindo ao Leilao!", endPoint);
+                        SendEncrypetedMessage("Item atual eh " + auctionItem, endPoint);
+                        SendEncrypetedMessage("Lance atual eh " + actualAuctionBid, endPoint);
+                        SendEncrypetedMessage("Digite um Novo Lance:", endPoint);
                     }
                     else
                     {
                         string[] messageReceivedList = new string[2];
-                        messageReceivedList = messageReceived.Split("|");
+                        messageReceivedList = messageReceivedDecrypeted.Split("|");
                         string clientPort = messageReceivedList[0];
                         string clientBid = messageReceivedList[1];
                         string clientName = messageReceivedList[2];
@@ -123,8 +129,8 @@ namespace Server
                         if (actualAuctionBid >= int.Parse(clientBid))
                         {
                             IPEndPoint endPoint = new IPEndPoint(multiCastIPAddress, int.Parse(clientPort));
-                            socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Seu lance foi abaixo ou igual ao lance atual"), endPoint);
-                            socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Digite um Novo Lance:"), endPoint);
+                            SendEncrypetedMessage("Seu lance foi abaixo ou igual ao lance atual", endPoint);
+                            SendEncrypetedMessage("Digite um Novo Lance:", endPoint);
                         }
                         else
                         {
@@ -132,23 +138,17 @@ namespace Server
                             actualClientPort = int.Parse(clientPort);
                             actualClientName = clientName;
 
-                            for (int i = 0; i < 100; i++)
+                            for (int i = 0; i < 10; i++)
                             {
                                 IPEndPoint endPoint = new IPEndPoint(multiCastIPAddress, multiCastPort + 1000 + i);
 
-                                socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Item atual eh " + auctionItem), endPoint);
-                                socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Lance atual eh " + actualAuctionBid), endPoint);
-                                socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Digite um Novo Lance:"), endPoint);
+                                SendEncrypetedMessage("Item atual eh " + auctionItem, endPoint);
+                                SendEncrypetedMessage("Lance atual eh " + actualAuctionBid, endPoint);
+                                SendEncrypetedMessage("Digite um Novo Lance:", endPoint);
                             }
                             Console.WriteLine("Mensagem devolvida para todos no multicast.....");
                         }
                     }
-
-
-                    
-                    
-
-
                 }
                 Console.WriteLine("close multiCastSocket.......");
                 multiCastSocket.Close();
@@ -158,6 +158,24 @@ namespace Server
             {
                 Console.WriteLine(e.ToString());
             }
+        }
+
+        private static byte[] CleanByteArray(byte[] byteSujo)
+        {
+            // populate foo
+            int byteCounter = byteSujo.Length - 1;
+            while (byteSujo[byteCounter] == 0)
+                --byteCounter;
+            // now foo[i] is the last non-zero byte
+            byte[] byteLimpo = new byte[byteCounter + 1];
+            Array.Copy(byteSujo, byteLimpo, byteCounter + 1);
+            return byteLimpo;
+        }
+
+        private static void SendEncrypetedMessage(string message, IPEndPoint endPoint)
+        {        
+            byte[] messageEncrypeted = SimetricEncrypt(message, Key, IV);
+            socketEnviador.SendTo(messageEncrypeted, endPoint);
         }
 
         public static void Initialize()
@@ -176,7 +194,65 @@ namespace Server
             MulticastOptionProperties();
 
             // Receive broadcast messages.
-            ReceiveBroadcastMessages();
+            ReceiveMulticastMessages();
+        }
+
+        static byte[] SimetricEncrypt(string plainText, byte[] Key, byte[] IV)
+        {
+            byte[] encrypted;
+            // Create a new AesManaged.    
+            using (AesManaged aes = new AesManaged())
+            {
+                // Create encryptor    
+                ICryptoTransform encryptor = aes.CreateEncryptor(Key, IV);
+                // Create MemoryStream    
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    // Create crypto stream using the CryptoStream class. This class is the key to encryption    
+                    // and encrypts and decrypts data from any given stream. In this case, we will pass a memory stream    
+                    // to encrypt    
+                    using (CryptoStream cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
+                    {
+                        // Create StreamWriter and write data to a stream    
+                        using (StreamWriter sw = new StreamWriter(cs))
+                            sw.Write(plainText);
+                        encrypted = ms.ToArray();
+                    }
+                }
+            }
+            // Return encrypted data    
+            return encrypted;
+        }
+        static string SimetricDecrypt(byte[] cipherText, byte[] Key, byte[] IV)
+        {
+            try
+            {
+                string plaintext = null;
+                // Create AesManaged    
+                using (AesManaged aes = new AesManaged())
+                {
+                    // Create a decryptor    
+                    ICryptoTransform decryptor = aes.CreateDecryptor(Key, IV);
+                    // Create the streams used for decryption.    
+                    using (MemoryStream ms = new MemoryStream(cipherText))
+                    {
+                        // Create crypto stream    
+                        using (CryptoStream cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
+                        {
+                            // Read crypto stream    
+                            using (StreamReader reader = new StreamReader(cs))
+                                plaintext = reader.ReadToEnd();
+                        }
+                    }
+                }
+                return plaintext;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return "";
+            }
+            
         }
 
         public static void FirstAuction()
@@ -200,13 +276,14 @@ namespace Server
                 else
                 {
                     Console.WriteLine("Value invalido, digite um numero positivo");
+                    FirstAuction();
                 }
             }
             else
             {
                 Console.WriteLine("Comando invalido, tente novamente");
+                FirstAuction();
             }
-
         }
 
         public static void ManageAuction()
@@ -227,16 +304,16 @@ namespace Server
                     {
                         IPEndPoint endPoint = new IPEndPoint(multiCastIPAddress, multiCastPort + 1000 + i);
 
-                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Leilao encerrado!!!"), endPoint);
-                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Vencedor foi:"), endPoint);
-                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes(actualClientName), endPoint);
-                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Item era " + auctionItem), endPoint);
-                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Lance final foi " + actualAuctionBid), endPoint);
+                        SendEncrypetedMessage("Leilao encerrado!!!", endPoint);
+                        SendEncrypetedMessage("Vencedor foi:", endPoint);
+                        SendEncrypetedMessage(actualClientName, endPoint);
+                        SendEncrypetedMessage("Item era " + auctionItem, endPoint);
+                        SendEncrypetedMessage("Lance final foi " + actualAuctionBid, endPoint);
                     }
 
                     IPEndPoint endPointVencedor = new IPEndPoint(multiCastIPAddress, actualClientPort);
-                    socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Parabens, voce venceu o leilao!!!"), endPointVencedor);
-                    socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Entre em contato com o telefone 999111888"), endPointVencedor);
+                    SendEncrypetedMessage("Parabens, voce venceu o leilao!!!", endPointVencedor);
+                    SendEncrypetedMessage("Entre em contato com o telefone 999111888", endPointVencedor);
 
                     auctionItem = name;
                     actualAuctionBid = Convert.ToInt32(value);
@@ -246,10 +323,10 @@ namespace Server
                     {
                         IPEndPoint endPoint = new IPEndPoint(multiCastIPAddress, multiCastPort + 1000 + i);
 
-                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Novo leilao iniciado!!!"), endPoint);
-                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Item atual eh " + auctionItem), endPoint);
-                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Lance atual eh " + actualAuctionBid), endPoint);
-                        socketEnviador.SendTo(ASCIIEncoding.ASCII.GetBytes("Digite um Novo Lance:"), endPoint);
+                        SendEncrypetedMessage("Novo leilao iniciado!!!", endPoint);
+                        SendEncrypetedMessage("Item atual eh " + auctionItem, endPoint);
+                        SendEncrypetedMessage("Lance atual eh " + actualAuctionBid, endPoint);
+                        SendEncrypetedMessage("Digite um Novo Lance:", endPoint);
                     }
                     Console.WriteLine("Mensagem devolvida para todos no multicast.....");
                 }
